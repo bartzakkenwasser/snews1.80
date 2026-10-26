@@ -1,12 +1,21 @@
-# sNews 1.80
+# sNews 1.81
 
 
-## Codename: sNews Reborn!
+## Codename: sNews Revisited!
 
 
-Welcome to [sNews] 1.80 a single engine file, template independant, PHP and Database powered, standards compliant Content Management System (CMS). 
+Welcome to [sNews] 1.81 a template independant, PHP and Database powered, standards compliant Content Management System (CMS). 
 
-sNews consists of one engine file (snews.php), one config file (config.php), one admin file (admin.php), one language file (EN.php), one XHTML file (index.php) for content presentation, one stylesheet (style.css) for content styling, one javascript file for functionality and addons folder to extends functions with modules. This makes sNews the lightest and one of the most user-friendly CMSs available today.
+sNews consists of the following files:
+  - One engine file (snews.php)
+  - One config file (config.php)
+  - One admin file (admin.php)
+  - One language file (EN.php)
+  - One stylesheet (style.css)
+  - One .htaccess file
+  - One SQL file (snews18.sql)
+  - One javascript file
+  - This makes sNews the lightest and one of the most user-friendly CMSs available today.
 
 **Before installing, please check that your server meets the minimum system requirements:**
 
