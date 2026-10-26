@@ -1,4 +1,13 @@
 <?php
+/*------------------------------------------------------------------------------
+  sNews Version:	1.8.1 - Official (Gecorrigeerd voor PHP 8.1+)
+  CodeName:     	REVISITED
+  Last Update:		2026 Modernization (brace fix)
+  Developers: 		Rui Mendes, Stephane Fritsch(Skiane), Nukpana
+  Thanks to:		@RobsWebsites
+  Copyright (C):	Solucija.com
+  Licence:      	sNews is licensed under a Creative Commons License.
+-------------------------------------------------------------------------------- */
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
