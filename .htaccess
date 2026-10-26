@@ -1,19 +1,86 @@
-<IfModule mod_php4.c>
-    php_value session.use_trans_sid 0
+# ============================================================================
+#  sNews 1.8 - Apache security and rewrite configuration
+#  Rename this file to ".htaccess" in the sNews root directory.
+#
+#  Tested with Apache 2.4 / LiteSpeed. The rewrite rules are wrapped in
+#  <IfModule mod_rewrite.c> so a host without mod_rewrite does not return 500.
+#  If the host returns HTTP 500, ask it to allow .htaccess overrides
+#  (AllowOverride FileInfo AuthConfig) or move config.php above public_html.
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 1. Block direct HTTP access to sensitive files
+# ----------------------------------------------------------------------------
+# config.php is an INI file, not a PHP script. Without this block, a request
+# to /config.php can print the database password in plain text.
+<FilesMatch "(?i)^(config\.php|databasetest\.php|test\.php|phpinfo\.php|snews\.db3|.*\.(?:sql|sqlite3?|db3?|log|bak|backup|old|orig|swp|swo|ini|env|inc|phps|dump|tmp|temp|save|sav)|.*~|error_log|composer\.(?:json|lock)|package(?:-lock)?\.json|yarn\.lock|htaccess\.txt|app\.py|passenger_wsgi\.py)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# ----------------------------------------------------------------------------
+# 2. Security headers
+# ----------------------------------------------------------------------------
+# These are safe defaults. A Content-Security-Policy is deliberately omitted
+# because the admin uses inline JavaScript and a strict CSP would break it.
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
+
+    # Enable HSTS only after HTTPS works correctly on the domain.
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>
 
-<IfModule mod_security.c>
-    SecFilterEngine Off
-    SecFilterScanPOST Off
+# ----------------------------------------------------------------------------
+# 3. Rewrite rules: block sensitive paths, then route sNews
+# ----------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # If sNews is installed in a subdirectory, uncomment and change this:
+    # RewriteBase /snews18/
+
+    # Block dotfiles and dot-directories: .git, .env, .htaccess, .svn, ...
+    # .well-known is excluded so Let's Encrypt HTTP validation still works.
+    RewriteRule "(^|/)\.(?!well-known(?:/|$))" - [F,L]
+
+    # Block the TRACE and TRACK HTTP methods.
+    RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK)$
+    RewriteRule .* - [F,L]
+
+    # Never serve these directories directly. PHP includes from disk still
+    # work (addons, language files), only HTTP access is blocked.
+    RewriteRule ^(?:addons|lang|logs|backups|SQL)(?:/|$) - [F,L,NC]
+
+    # Do not execute PHP files that end up in public asset directories.
+    RewriteRule ^(?:images|css|js)/.*\.(?:php[0-9]?|phtml|phar|pht|phtm)$ - [F,L,NC]
+
+    # Deny directory listings, except for .well-known (SSL validation).
+    RewriteCond %{REQUEST_URI} !/\.well-known/
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteCond %{REQUEST_FILENAME}/index.php !-f
+    RewriteRule ^ - [F,L]
+
+    # Optional: force HTTPS. Uncomment only after HTTPS works.
+    # The X-Forwarded-Proto check prevents a redirect loop behind a proxy/CDN.
+    # RewriteCond %{HTTPS} !=on
+    # RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+    # Existing files (CSS, JS, images, index.php) are served directly.
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Everything else is an sNews route: /login/, /administration/, etc.
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php?category=$1 [QSA,L]
 </IfModule>
-
-RewriteEngine On
-
-#RewriteBase /sNews18
-
-RewriteCond %{REQUEST_FILENAME} -f
-RewriteRule ^(.*) $1 [L]
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_FILENAME} !-l
-RewriteRule ^(.*)$ index.php?category=$1 [L]
