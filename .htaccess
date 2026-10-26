@@ -1,5 +1,5 @@
 # ============================================================================
-#  sNews 1.8 - Apache security and rewrite configuration
+#  sNews 1.8.1 Revisited - Apache security and rewrite configuration
 #  Rename this file to ".htaccess" in the sNews root directory.
 #
 #  Tested with Apache 2.4 / LiteSpeed. The rewrite rules are wrapped in
