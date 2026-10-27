@@ -7,6 +7,7 @@
   Thanks to:		@RobsWebsites
   Copyright (C):	Solucija.com
   Licence:      	sNews is licensed under a Creative Commons License.
+  Revised by:		zakkenwasser , 2026
 -------------------------------------------------------------------------------- */
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
