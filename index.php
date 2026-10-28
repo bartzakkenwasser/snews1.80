@@ -8,6 +8,7 @@
   Copyright (C):	Solucija.com
   Licence:      	sNews is licensed under a Creative Commons License.
 -------------------------------------------------------------------------------- */
+<?php
 ob_start();
 // Zet foutrapportage VOLLEDIG aan
 ini_set('display_errors', 1);
@@ -21,6 +22,7 @@ require_once __DIR__ . '/snews.php';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Titel + meta tags veilig renderen -->
     <?php title(); ?>
@@ -28,7 +30,7 @@ require_once __DIR__ . '/snews.php';
     <meta name="robots" content="index,follow">
     <meta name="author" content="Solucija.com">
 
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=<?= (int)@filemtime(__DIR__ . '/css/style.css') ?>">
 </head>
 <body>
 <div id="wrapper">
@@ -104,3 +106,4 @@ require_once __DIR__ . '/snews.php';
 </div>
 </body>
 </html>
+
