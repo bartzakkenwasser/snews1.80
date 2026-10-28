@@ -4,7 +4,7 @@
   CodeName:     	REVISITED
   Last Update:		2026 Modernization (brace fix)
   Developers: 		Rui Mendes, Stephane Fritsch(Skiane), Nukpana
-  Thanks to:		@RobsWebsites
+  Thanks to:		  @RobsWebsites
   Copyright (C):	Solucija.com
   Licence:      	sNews is licensed under a Creative Commons License.
 -------------------------------------------------------------------------------- */
