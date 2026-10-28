@@ -1,12 +1,13 @@
 <?php
 /*------------------------------------------------------------------------------
-  sNews Version:	1.8.1 - Official (Gecorrigeerd voor PHP 8.1+)
+  sNews Version:	1.8.0 - Official (Gecorrigeerd voor PHP 8.1+)
   CodeName:     	REVISITED
   Last Update:		2026 Modernization (brace fix)
   Developers: 		Rui Mendes, Stephane Fritsch(Skiane), Nukpana
   Thanks to:		@RobsWebsites
   Copyright (C):	Solucija.com
   Licence:      	sNews is licensed under a Creative Commons License.
+  Revised by:		zakkenwasser
 -------------------------------------------------------------------------------- */
 
 // Start sNews sessie veilig (alleen als er nog geen sessie actief is)
@@ -329,8 +330,9 @@ function readAddons(bool $return_values = true): ?string
 
                 $name = str_replace('.php', '', $file);
                 $ext = pathinfo($file, PATHINFO_EXTENSION);
+                $is_rss_request = isset($url[0]) && is_string($url[0]) && str_starts_with($url[0], 'rss-');
 
-                if ($ext === 'php' && (_ADMIN || str_starts_with($name, 'auto_') || (isset($url[0]) && $url[0] === $name))) {
+                if ($ext === 'php' && (_ADMIN || str_starts_with($name, 'auto_') || (isset($url[0]) && $url[0] === $name) || ($is_rss_request && str_starts_with($name, 'rss_')))) {
                     include_once $dir . $file;
                     if (function_exists('admin_' . $name)) {
                         addRoute("admin_$name", "$name admin page", 'admin_' . $name);
@@ -1647,11 +1649,110 @@ function searchform2(): void
 	</form>';
 }
 
-// SEARCH ENGINE (simplified for length – keep your full original if needed)
+// SEARCH ENGINE
 function search(mixed $limit = 20): void
 {
+    $search_query = trim((string)cleanXSS($_POST['search_query'] ?? ''));
+
     echo '<h2>' . htmlspecialchars(l('search_results'), ENT_QUOTES, 'UTF-8') . '</h2>';
-    echo '<p>Search functionality – expand with your original logic if required.</p>';
+
+    if (mb_strlen($search_query) < 4 || $search_query === l('search_keywords')) {
+        echo '<p>' . htmlspecialchars(l('charerror'), ENT_QUOTES, 'UTF-8') . '</p>';
+        echo '<p><a href="' . _SITE . '">' . l('backhome') . '</a></p>';
+        return;
+    }
+
+    $database = db();
+    if (!$database) {
+        echo '<p>' . l('dberror') . '</p>';
+        return;
+    }
+
+    // Commas mean "any of these terms" (OR). Otherwise spaces mean
+    // "all of these words" (AND), matching the original sNews behavior.
+    $has_comma = str_contains($search_query, ',');
+    if ($has_comma) {
+        $terms = array_filter(array_map('trim', explode(',', $search_query)), static fn($term) => $term !== '');
+    } else {
+        $terms = array_filter(preg_split('/\s+/u', $search_query), static fn($term) => $term !== '');
+    }
+    $terms = array_values($terms);
+
+    if (empty($terms)) {
+        echo '<p>' . htmlspecialchars(l('charerror'), ENT_QUOTES, 'UTF-8') . '</p>';
+        echo '<p><a href="' . _SITE . '">' . l('backhome') . '</a></p>';
+        return;
+    }
+
+    $params = [];
+    $term_clauses = [];
+    foreach ($terms as $index => $term) {
+        // Native MySQL prepared statements require a unique placeholder for
+        // each position; the same :name cannot be reused three times.
+        $title_key = ':title' . $index;
+        $text_key = ':text' . $index;
+        $keywords_key = ':keywords' . $index;
+        $like = '%' . $term . '%';
+        $params[$title_key] = $like;
+        $params[$text_key] = $like;
+        $params[$keywords_key] = $like;
+        $term_clauses[] = '(a.title LIKE ' . $title_key . ' OR a.text LIKE ' . $text_key . ' OR a.keywords_meta LIKE ' . $keywords_key . ')';
+    }
+
+    $search_where = '(' . implode($has_comma ? ' OR ' : ' AND ', $term_clauses) . ')';
+    $visible = _ADMIN ? '' : " AND a.visible = 'YES' ";
+
+    $sql = "SELECT a.id, a.title, a.seftitle AS asef, a.date, a.category,
+                   c.name AS name, c.seftitle AS csef,
+                   x.name AS xname, x.seftitle AS xsef
+            FROM " . _PRE . "articles AS a
+            LEFT JOIN " . _PRE . "categories AS c ON a.category = c.id AND c.published = 'YES'
+            LEFT JOIN " . _PRE . "categories AS x ON c.subcat = x.id AND x.published = 'YES'
+            WHERE a.position <> 2
+              AND a.published = 1
+              " . $visible . "
+              AND " . $search_where . "
+            ORDER BY a.id DESC
+            LIMIT " . (int)$limit;
+
+    try {
+        $stmt = $database->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        echo '<p>' . l('dberror') . '</p>';
+        return;
+    }
+
+    if (empty($rows)) {
+        echo '<p>' . l('noresults') . '<strong>' . htmlspecialchars($search_query, ENT_QUOTES, 'UTF-8') . '</strong>.</p>';
+        echo '<p><a href="' . _SITE . '">' . l('backhome') . '</a></p>';
+        return;
+    }
+
+    echo '<p><strong>' . count($rows) . '</strong> ' . l('resultsfound') . ' <strong>' . htmlspecialchars($search_query, ENT_QUOTES, 'UTF-8') . '</strong>.</p>';
+
+    $date_format = (string)s('date_format');
+    foreach ($rows as $row) {
+        $link = '';
+        if (!empty($row['xsef'])) {
+            $link = $row['xsef'] . '/';
+        }
+        if (!empty($row['csef'])) {
+            $link .= $row['csef'] . '/';
+        }
+        $link .= (string)$row['asef'];
+
+        $category_name = !empty($row['name']) ? ' (' . $row['name'] . ')' : '';
+        $date = !empty($row['date']) ? date($date_format !== '' ? $date_format : 'Y-m-d', strtotime((string)$row['date'])) : '';
+
+        echo '<p><a href="' . _SITE . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . '/">' .
+             htmlspecialchars((string)$row['title'], ENT_QUOTES, 'UTF-8') .
+             htmlspecialchars($category_name, ENT_QUOTES, 'UTF-8') . '</a> - ' .
+             htmlspecialchars($date, ENT_QUOTES, 'UTF-8') . '</p>';
+    }
+
+    echo '<p><a href="' . _SITE . '">' . l('backhome') . '</a></p>';
 }
 
 // RSS LINKS
