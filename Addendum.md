@@ -1,4 +1,4 @@
-I working on this snews18 cms project. I noticed there is something wrong with the login credentials. I thought the default was username:test, password:test. But when i type these in I get an ACCESS DENIED and it shuts me out completely and I'm not able to restore the session. 
+I was working on this snews18 cms project. I noticed there is something wrong with the login credentials. I thought the default was username:test, password:test. But when i type these in I get an ACCESS DENIED and it shuts me out completely and I'm not able to restore the session. 
 I restored the username and the password in the setup file for creating the database. The most important, I upgraded a lot of code to work with PHP version 8.1. 
 because all sNews versions where  very outdated.
 
